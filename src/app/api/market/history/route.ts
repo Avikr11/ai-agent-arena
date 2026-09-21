@@ -1,6 +1,8 @@
 
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const COINGECKO_HISTORY_URL =
   "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=hourly";
 
@@ -18,6 +20,7 @@ interface CoinGeckoResponse {
 
 let cachedHistory: HistoryPoint[] | null = null;
 let cacheExpiresAt = 0;
+let activeRequest: Promise<HistoryPoint[]> | null = null;
 
 function isValidPriceEntry(
   entry: unknown,
@@ -32,16 +35,7 @@ function isValidPriceEntry(
   );
 }
 
-export async function GET() {
-  const now = Date.now();
-
-  if (cachedHistory && now < cacheExpiresAt) {
-    return NextResponse.json({
-      prices: cachedHistory,
-      lastUpdated: now,
-    });
-  }
-
+async function fetchHistoryFromCoinGecko(): Promise<HistoryPoint[]> {
   const controller = new AbortController();
 
   const timeout = setTimeout(() => {
@@ -52,6 +46,9 @@ export async function GET() {
     const response = await fetch(COINGECKO_HISTORY_URL, {
       cache: "no-store",
       signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+      },
     });
 
     if (!response.ok) {
@@ -72,9 +69,7 @@ export async function GET() {
       throw new Error("CoinGecko returned an invalid history format");
     }
 
-    const rawPrices: unknown[] = responseData.prices;
-
-    const prices: HistoryPoint[] = rawPrices
+    const prices: HistoryPoint[] = responseData.prices
       .filter(isValidPriceEntry)
       .map(([timestamp, price]) => ({
         timestamp,
@@ -85,8 +80,37 @@ export async function GET() {
       throw new Error("No historical Bitcoin prices were returned");
     }
 
-    cachedHistory = prices;
-    cacheExpiresAt = Date.now() + CACHE_DURATION;
+    return prices;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function GET() {
+  const now = Date.now();
+
+  if (cachedHistory && now < cacheExpiresAt) {
+    return NextResponse.json({
+      prices: cachedHistory,
+      lastUpdated: now,
+    });
+  }
+
+  if (!activeRequest) {
+    activeRequest = fetchHistoryFromCoinGecko()
+      .then((prices) => {
+        cachedHistory = prices;
+        cacheExpiresAt = Date.now() + CACHE_DURATION;
+
+        return prices;
+      })
+      .finally(() => {
+        activeRequest = null;
+      });
+  }
+
+  try {
+    const prices = await activeRequest;
 
     return NextResponse.json({
       prices,
@@ -116,7 +140,5 @@ export async function GET() {
       },
       { status: 502 },
     );
-  } finally {
-    clearTimeout(timeout);
   }
 }

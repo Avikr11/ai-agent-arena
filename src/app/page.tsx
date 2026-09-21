@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Activity,
   ArrowDown,
   ArrowUp,
-  BarChart3,
   ChevronRight,
   Circle,
   Clock3,
@@ -19,7 +17,9 @@ import {
 
 import { fetchBitcoinPrice } from "@/lib/api";
 import { useMarketData } from "@/hooks/useMarketData";
-import PriceHistoryChart, { type PriceHistoryPoint } from "@/components/PriceHistoryChart";
+import PriceHistoryChart, {
+  type PriceHistoryPoint,
+} from "@/components/PriceHistoryChart";
 
 type Prediction = "UP" | "DOWN";
 type RoundDirection = "UP" | "DOWN" | "FLAT";
@@ -35,7 +35,7 @@ type Agent = {
   points: number;
   wins: number;
   losses: number;
-  accent: string;
+  gradient: string;
 };
 
 const initialAgents: Agent[] = [
@@ -49,7 +49,7 @@ const initialAgents: Agent[] = [
     points: 1240,
     wins: 0,
     losses: 0,
-    accent: "bg-amber-400 text-black",
+    gradient: "linear-gradient(135deg,#fbbf24,#f59e0b)",
   },
   {
     id: "whale",
@@ -61,7 +61,7 @@ const initialAgents: Agent[] = [
     points: 1185,
     wins: 0,
     losses: 0,
-    accent: "bg-slate-200 text-slate-900",
+    gradient: "linear-gradient(135deg,#818cf8,#6366f1)",
   },
   {
     id: "contrarian",
@@ -73,7 +73,7 @@ const initialAgents: Agent[] = [
     points: 1095,
     wins: 0,
     losses: 0,
-    accent: "bg-violet-300 text-violet-950",
+    gradient: "linear-gradient(135deg,#f472b6,#ec4899)",
   },
 ];
 
@@ -90,17 +90,13 @@ const WIN_POINTS = 100;
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-
   return `${String(minutes).padStart(2, "0")}:${String(
     remainingSeconds,
   ).padStart(2, "0")}`;
 }
 
 function formatPrice(price: number | null) {
-  if (price === null) {
-    return "--";
-  }
-
+  if (price === null) return "--";
   return `$${price.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -111,14 +107,8 @@ function getDirection(
   startingPrice: number,
   endingPrice: number,
 ): RoundDirection {
-  if (endingPrice > startingPrice) {
-    return "UP";
-  }
-
-  if (endingPrice < startingPrice) {
-    return "DOWN";
-  }
-
+  if (endingPrice > startingPrice) return "UP";
+  if (endingPrice < startingPrice) return "DOWN";
   return "FLAT";
 }
 
@@ -141,26 +131,18 @@ function getAgentDecision(
           ? "DOWN"
           : "UP"
         : marketBias;
-
-    return {
-      prediction,
-      confidence: clampConfidence(64 + strength * 3),
-    };
+    return { prediction, confidence: clampConfidence(64 + strength * 3) };
   }
 
   if (agentId === "whale") {
-    const prediction = marketBias;
-
     return {
-      prediction,
+      prediction: marketBias,
       confidence: clampConfidence(68 + strength * 2.5),
     };
   }
 
-  const prediction = marketBias === "UP" ? "DOWN" : "UP";
-
   return {
-    prediction,
+    prediction: marketBias === "UP" ? "DOWN" : "UP",
     confidence: clampConfidence(62 + strength * 2),
   };
 }
@@ -194,26 +176,21 @@ export default function Home() {
           throw new Error("Invalid price history response.");
         }
 
-        if (!cancelled) {
-          setPriceHistory(result.prices);
-        }
+        if (!cancelled) setPriceHistory(result.prices);
       } catch (historyFetchError) {
         if (!cancelled) {
           setHistoryError(
             historyFetchError instanceof Error
               ? historyFetchError.message
-              : "Unable to load price history."
+              : "Unable to load price history.",
           );
         }
       } finally {
-        if (!cancelled) {
-          setHistoryLoading(false);
-        }
+        if (!cancelled) setHistoryLoading(false);
       }
     }
 
     loadPriceHistory();
-
     const interval = window.setInterval(loadPriceHistory, 60_000);
 
     return () => {
@@ -221,7 +198,6 @@ export default function Home() {
       window.clearInterval(interval);
     };
   }, []);
-
 
   const [roundNumber, setRoundNumber] = useState(42);
   const [roundEndAt, setRoundEndAt] = useState<number | null>(null);
@@ -243,59 +219,36 @@ export default function Home() {
   const [userPoints, setUserPoints] = useState(1000);
   const [agents, setAgents] = useState(initialAgents);
 
-  /*
-   * Capture the market snapshot when a new round begins.
-   *
-   * We only establish the starting price once. Market refreshes during
-   * the round do not change the round's starting reference.
-   */
   useEffect(() => {
     if (startingPrice === null && market?.price) {
       setStartingPrice(market.price);
     }
   }, [market, startingPrice]);
 
-  /*
-   * Countdown is derived from an absolute timestamp to avoid timing drift.
-   */
   useEffect(() => {
-    if (roundEndAt === null || roundClosed) {
-      return;
-    }
+    if (roundEndAt === null || roundClosed) return;
 
     const updateCountdown = () => {
       const remainingMs = Math.max(roundEndAt - Date.now(), 0);
       const remainingSeconds = Math.ceil(remainingMs / 1000);
-
       setTimeLeft(remainingSeconds);
-
-      if (remainingMs <= 0) {
-        setRoundClosed(true);
-      }
+      if (remainingMs <= 0) setRoundClosed(true);
     };
 
     updateCountdown();
-
     const timer = window.setInterval(updateCountdown, 250);
-
     return () => window.clearInterval(timer);
   }, [roundEndAt, roundClosed]);
 
   useEffect(() => {
-    if (market?.price === undefined || roundEndAt !== null) {
-      return;
-    }
+    if (market?.price === undefined || roundEndAt !== null) return;
 
     setStartingPrice(market.price);
 
     setAgents((currentAgents) =>
       currentAgents.map((agent) => ({
         ...agent,
-        ...getAgentDecision(
-          agent.id,
-          market.change24h,
-          roundNumber,
-        ),
+        ...getAgentDecision(agent.id, market.change24h, roundNumber),
       })),
     );
 
@@ -303,16 +256,8 @@ export default function Home() {
     setTimeLeft(ROUND_DURATION);
   }, [market, roundEndAt, roundNumber]);
 
-  /*
-   * Resolve the round exactly once after the timer reaches zero.
-   *
-   * The latest market snapshot available at resolution becomes the
-   * ending price for this V1 client-side round engine.
-   */
   useEffect(() => {
-    if (!roundClosed || roundResult || startingPrice === null) {
-      return;
-    }
+    if (!roundClosed || roundResult || startingPrice === null) return;
 
     let cancelled = false;
 
@@ -322,10 +267,7 @@ export default function Home() {
 
       try {
         const freshMarket = await fetchBitcoinPrice(true);
-
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         const finalPrice = freshMarket.price;
         const direction = getDirection(startingPrice, finalPrice);
@@ -337,15 +279,12 @@ export default function Home() {
           currentAgents.map((agent) => {
             const isCorrect =
               direction !== "FLAT" && agent.prediction === direction;
-
             const isIncorrect =
               direction !== "FLAT" && agent.prediction !== direction;
 
             return {
               ...agent,
-              points: isCorrect
-                ? agent.points + WIN_POINTS
-                : agent.points,
+              points: isCorrect ? agent.points + WIN_POINTS : agent.points,
               wins: isCorrect ? agent.wins + 1 : agent.wins,
               losses: isIncorrect ? agent.losses + 1 : agent.losses,
             };
@@ -363,47 +302,34 @@ export default function Home() {
         } else {
           setRoundResult("LOSS");
         }
-      } catch (error) {
-        console.error("Round resolution failed:", error);
-
+      } catch (resolveError) {
+        console.error("Round resolution failed:", resolveError);
         if (!cancelled) {
           setResolutionError(
-            "We couldn't fetch the latest market price. Please try again.",
+            "We couldn't fetch the latest market price. Try again.",
           );
         }
       } finally {
-        if (!cancelled) {
-          setIsResolving(false);
-        }
+        if (!cancelled) setIsResolving(false);
       }
     };
 
     resolveRound();
-
     return () => {
       cancelled = true;
     };
-  }, [
-    roundClosed,
-    roundResult,
-    startingPrice,
-    prediction,
-    resolutionAttempt,
-  ]);
+  }, [roundClosed, roundResult, startingPrice, prediction, resolutionAttempt]);
 
   const resetRound = () => {
     setRoundNumber((current) => current + 1);
     setRoundEndAt(null);
     setTimeLeft(ROUND_DURATION);
-
     setPrediction(null);
     setStartingPrice(null);
     setEndingPrice(null);
-
     setRoundClosed(false);
     setRoundResult(null);
     setActualDirection(null);
-
     setIsResolving(false);
     setResolutionError(null);
     setResolutionAttempt(0);
@@ -411,11 +337,11 @@ export default function Home() {
 
   const isUrgent = timeLeft <= 10 && !roundClosed;
 
-  const countdownClass = roundClosed
-    ? "border-white/10 bg-white/[0.04] text-white/50"
+  const countdownGradient = roundClosed
+    ? "linear-gradient(135deg,#6b7280,#4b5563)"
     : isUrgent
-      ? "border-rose-400/25 bg-rose-400/[0.07] text-rose-300"
-      : "border-amber-400/20 bg-amber-400/[0.06] text-amber-200";
+      ? "linear-gradient(135deg,#fb7185,#f43f5e)"
+      : "linear-gradient(135deg,#fbbf24,#f59e0b)";
 
   const leaderboardSorted = useMemo<LeaderboardEntry[]>(() => {
     return [
@@ -424,544 +350,244 @@ export default function Home() {
         points: agent.points,
         type: "agent" as const,
       })),
-      {
-        name: "You",
-        points: userPoints,
-        type: "user" as const,
-      },
+      { name: "You", points: userPoints, type: "user" as const },
     ]
       .sort((a, b) => b.points - a.points)
-      .map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      }));
+      .map((entry, index) => ({ ...entry, rank: index + 1 }));
   }, [agents, userPoints]);
 
   const resultLabel =
-  prediction === null
-    ? "You didn't make a prediction this round"
-    : roundResult === "WIN"
-      ? "You won this round"
-      : roundResult === "LOSS"
-        ? "You lost this round"
-        : "Round ended flat";
+    prediction === null
+      ? "You didn't make a prediction this round"
+      : roundResult === "WIN"
+        ? "You won this round"
+        : roundResult === "LOSS"
+          ? "You lost this round"
+          : "Round ended flat";
 
   return (
-    <main className="min-h-screen bg-[#0b0b0a] text-[#f5f5f2]">
-      <div className="mx-auto max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#05060a] text-white">
+      {/* Animated mesh-gradient background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="mesh-blob mesh-blob-1" />
+        <div className="mesh-blob mesh-blob-2" />
+        <div className="mesh-blob mesh-blob-3" />
+        <div className="mesh-blob mesh-blob-4" />
+        <div className="mesh-grid" />
+        <div className="mesh-noise" />
+      </div>
+
+      <div className="relative mx-auto max-w-[1200px] px-5 py-6 sm:px-8 lg:px-10">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-white/[0.08] pb-5">
+        <header className="glass-panel flex items-center justify-between rounded-2xl px-5 py-4">
           <div className="flex items-center gap-3">
             <div
-              aria-hidden="true"
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-400"
+              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)" }}
             >
-              <Zap className="h-4 w-4 text-black" />
+              <Zap className="h-5 w-5 text-black" aria-hidden="true" />
             </div>
-
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-[15px] font-semibold tracking-tight">
-                  AI Agent Arena
-                </h1>
-
-                <span className="hidden rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/50 sm:inline-flex">
-                  V1
+                <span className="text-[15px] font-bold tracking-tight">
+                  Agent Arena
+                </span>
+                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] text-white/60">
+                  v1
                 </span>
               </div>
-
-              <p className="mt-0.5 text-[11px] text-white/45">
-                Market prediction competition
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="hidden items-center gap-2 text-xs text-white/45 sm:flex">
+          <div className="flex items-center gap-5">
+            <span className="hidden items-center gap-1.5 text-[13px] text-white/50 sm:flex">
               <Users className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>1,284 in arena</span>
-            </div>
-
-            <div
-              className="flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1.5"
-              aria-label="Arena status: live"
-            >
-              <Circle
-                className="h-1.5 w-1.5 animate-pulse fill-emerald-400 text-emerald-400"
-                aria-hidden="true"
-              />
-
-              <span className="text-[11px] font-medium text-emerald-300">
+              1,284 watching
+            </span>
+            <span className="flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5">
+              <span className="live-dot" />
+              <span className="text-[12px] font-medium text-emerald-300">
                 Live
               </span>
-            </div>
+            </span>
           </div>
         </header>
 
-        {/* Arena */}
-        <section
-          aria-labelledby="arena-heading"
-          className="mt-7 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111110]"
-        >
-          {/* Arena header */}
-          <div className="border-b border-white/[0.07] px-5 py-5 sm:px-7">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-amber-300">
-                  <Activity className="h-3.5 w-3.5" aria-hidden="true" />
-                  Live market
-                </div>
+        {/* Hero */}
+        <section className="glass-panel mt-5 rounded-3xl p-6 sm:p-9">
+          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <p className="text-[13px] text-white/50">Bitcoin · BTC/USD</p>
 
-                <div className="flex items-end gap-3 sm:gap-4">
-                  <h2
-                    id="arena-heading"
-                    className="text-2xl font-semibold tracking-tight sm:text-3xl"
+              <div className="mt-3 flex flex-wrap items-end gap-4">
+                <span className="hero-price text-6xl font-extrabold tracking-[-0.03em] tabular-nums sm:text-7xl lg:text-8xl">
+                  {loading
+                    ? "···"
+                    : market
+                      ? formatPrice(market.price)
+                      : "--"}
+                </span>
+
+                {market && (
+                  <span
+                    className={`mb-3 flex items-center gap-1 rounded-full px-3 py-1 text-base font-semibold tabular-nums ${
+                      market.change24h >= 0
+                        ? "bg-emerald-400/10 text-emerald-300"
+                        : "bg-rose-400/10 text-rose-300"
+                    }`}
                   >
-                    BTC / USD
-                  </h2>
-
-                  <span className="mb-1 rounded border border-white/10 px-2 py-1 text-[10px] font-medium text-white/50">
-                    Bitcoin
+                    {market.change24h >= 0 ? (
+                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    {market.change24h >= 0 ? "+" : "-"}
+                    {Math.abs(market.change24h).toFixed(2)}%
                   </span>
-                </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 divide-x divide-white/10 rounded-lg border border-white/[0.06] bg-white/[0.015] lg:border-0 lg:bg-transparent">
-                <div className="px-3 py-2 text-center sm:px-5 lg:px-0 lg:pr-6 lg:text-left">
-                  <p className="text-[10px] uppercase tracking-wider text-white/45">
-                    Round
-                  </p>
-                  <p className="mt-1 text-sm font-semibold">
-                    #{String(roundNumber).padStart(3, "0")}
-                  </p>
-                </div>
+              {error && (
+                <p className="mt-3 text-sm text-rose-300" role="alert">
+                  {error}
+                </p>
+              )}
+              {!loading && !error && !market && (
+                <p className="mt-3 text-sm text-white/40">
+                  Market data is temporarily unavailable.
+                </p>
+              )}
+              {startingPrice !== null && !roundClosed && (
+                <p className="mt-3 text-[13px] text-white/40">
+                  opened this round at{" "}
+                  <span className="tabular-nums text-white/70">
+                    {formatPrice(startingPrice)}
+                  </span>
+                </p>
+              )}
+            </div>
 
-                <div className="px-3 py-2 text-center sm:px-5 lg:px-6 lg:text-left">
-                  <p className="text-[10px] uppercase tracking-wider text-white/45">
-                    Entries
-                  </p>
-                  <p className="mt-1 text-sm font-semibold">1,284</p>
-                </div>
-
-                <div className="px-3 py-2 text-center sm:px-5 lg:px-0 lg:pl-6 lg:text-left">
-                  <p className="text-[10px] uppercase tracking-wider text-white/45">
-                    Status
-                  </p>
-
-                  <div className="mt-1 flex items-center justify-center gap-1.5 lg:justify-start">
-                    <Circle
-                      className={`h-1.5 w-1.5 ${
-                        roundClosed
-                          ? "fill-white/30 text-white/30"
-                          : "fill-emerald-400 text-emerald-400"
-                      }`}
-                      aria-hidden="true"
-                    />
-
-                    <span
-                      className={`text-sm font-medium ${
-                        roundClosed
-                          ? "text-white/50"
-                          : "text-emerald-300"
-                      }`}
-                    >
-                      {roundClosed ? "Closed" : "Open"}
-                    </span>
-                  </div>
-                </div>
+            <div className="flex gap-6 lg:flex-col lg:items-end lg:gap-4">
+              <div className="stat-chip">
+                <p className="text-2xl font-bold tabular-nums">
+                  {String(roundNumber).padStart(3, "0")}
+                </p>
+                <p className="text-[11px] text-white/40">round</p>
+              </div>
+              <div className="stat-chip">
+                <p className="text-2xl font-bold tabular-nums">1,284</p>
+                <p className="text-[11px] text-white/40">entries</p>
               </div>
             </div>
           </div>
 
-          {/* Market / Prediction */}
-          <div className="grid lg:grid-cols-[minmax(0,1fr)_330px]">
-            {/* Market */}
-            <div className="min-w-0 border-b border-white/[0.07] p-5 sm:p-7 lg:border-b-0 lg:border-r">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-white/45">
-                    Current price
-                  </p>
+          <div className="chart-frame mt-7 h-[220px] overflow-hidden rounded-2xl sm:h-[280px]">
+            <PriceHistoryChart
+              data={priceHistory}
+              loading={historyLoading}
+              error={historyError}
+            />
+          </div>
+          <p className="mt-3 text-[12px] text-white/40">
+            24-hour history, refreshed every minute
+          </p>
+        </section>
 
-                  <div className="mt-2 flex flex-wrap items-end gap-3">
-                    <span className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
-                      {loading
-                        ? "Loading..."
-                        : market
-                          ? formatPrice(market.price)
-                          : "--"}
-                    </span>
+        {/* Prediction */}
+        <section className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="glass-panel rounded-3xl p-6 sm:p-8">
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Where does it{" "}
+              <span className="gradient-text">go</span>?
+            </h2>
+            <p className="mt-4 max-w-sm text-[14px] leading-6 text-white/50">
+              {roundClosed
+                ? roundResult
+                  ? `${resultLabel}.`
+                  : "This round has closed. Waiting for the final price."
+                : "Predict Bitcoin's direction before the round closes."}
+            </p>
 
-                    {market && (
-                      <div className="mb-1 flex items-center gap-2">
-                        <span
-                          className={`flex items-center gap-1 text-sm font-medium ${
-                            market.change24h >= 0
-                              ? "text-emerald-400"
-                              : "text-rose-400"
-                          }`}
-                        >
-                          {market.change24h >= 0 ? (
-                            <ArrowUp
-                              className="h-3.5 w-3.5"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <ArrowDown
-                              className="h-3.5 w-3.5"
-                              aria-hidden="true"
-                            />
-                          )}
-
-                          <span>
-                            {market.change24h >= 0 ? "+" : "-"}
-                            {Math.abs(market.change24h).toFixed(2)}%
-                          </span>
-                        </span>
-
-                        <span className="ml-1 text-[10px] text-white/45">
-                          24h
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {error && (
-                    <p className="mt-2 text-xs text-rose-300" role="alert">
-                      {error}
-                    </p>
-                  )}
-
-                  {!loading && !error && !market && (
-                    <p className="mt-2 text-xs text-white/50">
-                      Market data is temporarily unavailable.
-                    </p>
-                  )}
-
-                  {startingPrice !== null && !roundClosed && (
-                    <p className="mt-2 text-[10px] text-white/40">
-                      Round start: {formatPrice(startingPrice)}
-                    </p>
-                  )}
-                </div>
-
-                <div className="hidden items-center gap-2 text-xs text-white/40 sm:flex">
-                  <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Live feed</span>
-                </div>
-              </div>
-
-              {/* Live history */}
-              <div className="mt-7">
-                <div className="relative h-[240px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#0d0d0c] sm:h-[270px]">
-                  <PriceHistoryChart
-                    data={priceHistory}
-                    loading={historyLoading}
-                    error={historyError}
-                  />
-
-                  <div className="absolute right-4 top-4 rounded border border-white/10 bg-[#111110]/90 px-2 py-1 text-[10px] text-white/50">
-                    Live history
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-[10px] text-white/40">
-                    Live Bitcoin price history · Refreshes every 60 seconds.
-                  </p>
-
-                  <span className="shrink-0 text-[10px] font-medium text-amber-300/70">
-                    BTC
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Prediction */}
-            <aside
-              aria-labelledby="prediction-heading"
-              className="bg-[#151513] p-5 sm:p-7"
+            <div
+              className="countdown-badge mt-8 inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-3xl font-extrabold tabular-nums"
+              style={{ background: countdownGradient }}
+              aria-label={
+                roundClosed
+                  ? "Round closed"
+                  : `Round time remaining: ${formatTime(timeLeft)}`
+              }
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/45">
-                    Make your call
-                  </p>
+              <Clock3 className="h-6 w-6" aria-hidden="true" />
+              {formatTime(timeLeft)}
+            </div>
+          </div>
 
-                  <h3
-                    id="prediction-heading"
-                    className="mt-1 text-lg font-semibold"
-                  >
-                    Where next?
-                  </h3>
-                </div>
-
-                <div
-                  className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 transition-colors ${countdownClass}`}
-                  aria-label={
-                    roundClosed
-                      ? "Round closed"
-                      : `Round time remaining: ${formatTime(timeLeft)}`
-                  }
+          <div className="glass-panel rounded-3xl p-6 sm:p-8">
+            {!roundClosed ? (
+              <div className="space-y-3">
+                <motion.button
+                  type="button"
+                  aria-label="Predict price will go up"
+                  aria-pressed={prediction === "UP"}
+                  onClick={() => setPrediction("UP")}
+                  whileHover={{ scale: 1.015, y: -2 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className={`predict-btn predict-up flex w-full items-center justify-between rounded-2xl px-5 py-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#05060a] ${
+                    prediction === "UP" ? "predict-up-active" : ""
+                  }`}
                 >
-                  <Clock3
-                    className="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  />
-
-                  <span className="font-mono text-sm font-semibold">
-                    {formatTime(timeLeft)}
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 text-black">
+                      <ArrowUp className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span>
+                      <span className="block text-[15px] font-bold">
+                        Goes up
+                      </span>
+                      <span className="block text-[12px] text-white/50">
+                        Bullish
+                      </span>
+                    </span>
                   </span>
-                </div>
-              </div>
+                  <ChevronRight className="h-4 w-4 text-white/40" aria-hidden="true" />
+                </motion.button>
 
-              <p className="mt-3 text-xs leading-5 text-white/50">
-                {roundClosed
-                  ? roundResult
-                    ? `${resultLabel}.`
-                    : "This round has closed. Waiting for the final market snapshot."
-                  : "Choose the direction you think Bitcoin will move before the round closes."}
-              </p>
-
-              {!roundClosed ? (
-                <div className="mt-7 space-y-3">
-                  <button
-                    type="button"
-                    aria-label="Predict price will go up"
-                    aria-pressed={prediction === "UP"}
-                    onClick={() => setPrediction("UP")}
-                    className={`group flex w-full items-center justify-between rounded-xl border px-4 py-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151513] ${
-                      prediction === "UP"
-                        ? "border-emerald-400/60 bg-emerald-400/[0.14]"
-                        : "border-emerald-400/25 bg-emerald-400/[0.06] hover:border-emerald-400/50 hover:bg-emerald-400/[0.1]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400 text-black transition-transform ${
-                          prediction === "UP"
-                            ? "scale-105"
-                            : "group-hover:scale-105"
-                        }`}
-                      >
-                        <ArrowUp
-                          className="h-4 w-4"
-                          aria-hidden="true"
-                        />
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-200">
-                          Price goes up
-                        </p>
-
-                        <p className="mt-0.5 text-[10px] text-white/45">
-                          Bullish prediction
-                        </p>
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      className={`h-4 w-4 transition-all ${
-                        prediction === "UP"
-                          ? "translate-x-0.5 text-emerald-300"
-                          : "text-white/25 group-hover:translate-x-0.5"
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </button>
-
-                  <button
-                    type="button"
-                    aria-label="Predict price will go down"
-                    aria-pressed={prediction === "DOWN"}
-                    onClick={() => setPrediction("DOWN")}
-                    className={`group flex w-full items-center justify-between rounded-xl border px-4 py-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151513] ${
-                      prediction === "DOWN"
-                        ? "border-rose-400/60 bg-rose-400/[0.13]"
-                        : "border-rose-400/25 bg-rose-400/[0.05] hover:border-rose-400/50 hover:bg-rose-400/[0.09]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg bg-rose-400 text-black transition-transform ${
-                          prediction === "DOWN"
-                            ? "scale-105"
-                            : "group-hover:scale-105"
-                        }`}
-                      >
-                        <ArrowDown
-                          className="h-4 w-4"
-                          aria-hidden="true"
-                        />
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold text-rose-200">
-                          Price goes down
-                        </p>
-
-                        <p className="mt-0.5 text-[10px] text-white/45">
-                          Bearish prediction
-                        </p>
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      className={`h-4 w-4 transition-all ${
-                        prediction === "DOWN"
-                          ? "translate-x-0.5 text-rose-300"
-                          : "text-white/25 group-hover:translate-x-0.5"
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                </div>
-              ) : roundResult ? (
-                <div className="mt-7">
-                  <div
-                    className={`rounded-xl border p-5 ${
-                      roundResult === "WIN"
-                        ? "border-emerald-400/20 bg-emerald-400/[0.06]"
-                        : roundResult === "LOSS"
-                          ? "border-rose-400/20 bg-rose-400/[0.06]"
-                          : "border-amber-400/20 bg-amber-400/[0.05]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-[0.16em] text-white/45">
-                        Round result
+                <motion.button
+                  type="button"
+                  aria-label="Predict price will go down"
+                  aria-pressed={prediction === "DOWN"}
+                  onClick={() => setPrediction("DOWN")}
+                  whileHover={{ scale: 1.015, y: -2 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className={`predict-btn predict-down flex w-full items-center justify-between rounded-2xl px-5 py-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#05060a] ${
+                    prediction === "DOWN" ? "predict-down-active" : ""
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-400 text-black">
+                      <ArrowDown className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span>
+                      <span className="block text-[15px] font-bold">
+                        Goes down
                       </span>
-
-                      <span
-                        className={`text-xs font-semibold ${
-                          roundResult === "WIN"
-                            ? "text-emerald-300"
-                            : roundResult === "LOSS"
-                              ? "text-rose-300"
-                              : "text-amber-300"
-                        }`}
-                      >
-                        {roundResult}
+                      <span className="block text-[12px] text-white/50">
+                        Bearish
                       </span>
-                    </div>
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-white/40" aria-hidden="true" />
+                </motion.button>
 
-                    <h4 className="mt-3 text-lg font-semibold">
-                      {resultLabel}
-                    </h4>
-
-                    <div className="mt-4 space-y-2 border-t border-white/[0.07] pt-4 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-white/45">Your prediction</span>
-                        <span className="font-semibold">
-                          {prediction ?? "None"}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between">
-                        <span className="text-white/45">Market direction</span>
-                        <span className="font-semibold">
-                          {actualDirection}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between">
-                        <span className="text-white/45">Start price</span>
-                        <span className="font-mono">
-                          {formatPrice(startingPrice)}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between">
-                        <span className="text-white/45">End price</span>
-                        <span className="font-mono">
-                          {formatPrice(endingPrice)}
-                        </span>
-                      </div>
-
-                      {roundResult === "WIN" && (
-                        <div className="flex justify-between pt-2 text-emerald-300">
-                          <span>Points earned</span>
-                          <span className="font-semibold">
-                            +{WIN_POINTS}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={resetRound}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151513]"
-                  >
-                    <RefreshCcw
-                      className="h-3.5 w-3.5"
-                      aria-hidden="true"
-                    />
-                    Start Next Round
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-7 rounded-xl border border-white/[0.08] bg-white/[0.025] p-5 text-center">
-                  <div
-                    className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/20 bg-amber-400/[0.06] ${
-                      isResolving ? "animate-pulse" : ""
-                    }`}
-                    aria-live="polite"
-                  >
-                    <Clock3
-                      className={`h-4 w-4 text-amber-300 ${
-                        isResolving ? "animate-spin" : ""
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </div>
-
-                  <h4
-                    className="mt-4 text-sm font-semibold"
-                    aria-live="polite"
-                  >
-                    {resolutionError
-                      ? "Unable to resolve round"
-                      : isResolving
-                        ? "Resolving round..."
-                        : "Preparing resolution..."}
-                  </h4>
-
-                  <p className="mx-auto mt-2 max-w-[260px] text-xs leading-5 text-white/45">
-                    {resolutionError
-                      ? resolutionError
-                      : "Waiting for the latest market snapshot to calculate the result."}
-                  </p>
-
-                  {resolutionError && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setResolutionError(null);
-                        setResolutionAttempt((current) => current + 1);
-                      }}
-                      className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/[0.08] px-4 py-2.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300/50 hover:bg-amber-400/[0.14] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151513]"
-                    >
-                      <RefreshCcw
-                        className="h-3.5 w-3.5"
-                        aria-hidden="true"
-                      />
-                      Retry Resolution
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-5 min-h-5 text-center">
-                {prediction && !roundClosed && (
+                {prediction && (
                   <motion.p
                     initial={{ opacity: 0, y: 3 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-[10px] font-medium text-white/55"
+                    className="pt-1 text-[13px] text-white/50"
                   >
-                    Prediction selected:{" "}
+                    Locked in:{" "}
                     <span
                       className={
                         prediction === "UP"
@@ -974,238 +600,232 @@ export default function Home() {
                   </motion.p>
                 )}
               </div>
+            ) : roundResult ? (
+              <div>
+                <div className="result-card rounded-2xl p-6">
+                  <div className="flex items-center justify-between text-[12px] text-white/50">
+                    <span>Result</span>
+                    <span
+                      className={
+                        roundResult === "WIN"
+                          ? "text-emerald-300"
+                          : roundResult === "LOSS"
+                            ? "text-rose-300"
+                            : "text-amber-300"
+                      }
+                    >
+                      {roundResult}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xl font-bold">{resultLabel}.</p>
 
-              <div className="mt-5 border-t border-white/[0.07] pt-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-white/40">
-                    Your points
-                  </span>
-
-                  <span className="font-mono text-sm font-semibold">
-                    {userPoints.toLocaleString()}
-                  </span>
+                  <div className="mt-5 space-y-2.5 border-t border-white/10 pt-4 text-[13px]">
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Your call</span>
+                      <span>{prediction ?? "None"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Market moved</span>
+                      <span>{actualDirection}</span>
+                    </div>
+                    <div className="flex justify-between tabular-nums">
+                      <span className="text-white/40">Open</span>
+                      <span>{formatPrice(startingPrice)}</span>
+                    </div>
+                    <div className="flex justify-between tabular-nums">
+                      <span className="text-white/40">Close</span>
+                      <span>{formatPrice(endingPrice)}</span>
+                    </div>
+                    {roundResult === "WIN" && (
+                      <div className="flex justify-between pt-1 text-emerald-300">
+                        <span>Points</span>
+                        <span>+{WIN_POINTS}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                <motion.button
+                  type="button"
+                  onClick={resetRound}
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
+                  className="next-round-btn mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-[14px] font-bold text-black"
+                >
+                  <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  Next round
+                </motion.button>
               </div>
-            </aside>
+            ) : (
+              <div className="result-card rounded-2xl p-6 text-center" aria-live="polite">
+                <Clock3
+                  className={`mx-auto h-6 w-6 text-amber-300 ${
+                    isResolving ? "animate-spin" : ""
+                  }`}
+                  aria-hidden="true"
+                />
+                <p className="mt-4 text-[15px] font-bold">
+                  {resolutionError
+                    ? "Couldn't resolve round"
+                    : isResolving
+                      ? "Resolving…"
+                      : "Preparing…"}
+                </p>
+                <p className="mx-auto mt-2 max-w-[220px] text-[13px] text-white/50">
+                  {resolutionError ?? "Waiting for the latest market snapshot."}
+                </p>
+                {resolutionError && (
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.03 }}
+                    onClick={() => {
+                      setResolutionError(null);
+                      setResolutionAttempt((current) => current + 1);
+                    }}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-[13px] font-semibold text-amber-300"
+                  >
+                    <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                    Retry
+                  </motion.button>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center justify-between">
+              <span className="text-[13px] text-white/50">Your points</span>
+              <span className="gradient-text text-2xl font-extrabold tabular-nums">
+                {userPoints.toLocaleString()}
+              </span>
+            </div>
           </div>
         </section>
 
         {/* Agents */}
-        <section
-          aria-labelledby="agents-heading"
-          className="mt-8"
-        >
-          <div className="mb-4 flex items-end justify-between">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber-300/70">
-                The competition
-              </p>
-
-              <h3
-                id="agents-heading"
-                className="mt-1.5 text-xl font-semibold tracking-tight"
-              >
-                Agent predictions
-              </h3>
-            </div>
-
-            <span className="hidden text-[11px] text-white/40 sm:block">
-              Updated this round
+        <section className="glass-panel mt-5 rounded-3xl p-6 sm:p-8">
+          <div className="mb-6 flex items-end justify-between">
+            <h3 className="text-2xl font-extrabold tracking-tight">
+              Agent predictions
+            </h3>
+            <span className="hidden text-[13px] text-white/40 sm:block">
+              This round
             </span>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-3">
             {agents.map((agent, index) => (
-              <motion.article
+              <motion.div
                 key={agent.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: index * 0.08,
-                  duration: 0.35,
-                }}
-                className="group rounded-xl border border-white/[0.08] bg-[#111110] p-4 transition-colors hover:border-white/[0.14]"
+                whileHover={{ y: -4 }}
+                transition={{ delay: index * 0.08, duration: 0.3 }}
+                className="agent-card rounded-2xl p-5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      aria-hidden="true"
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-[10px] font-bold ${agent.accent}`}
-                    >
-                      {agent.shortName}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold">
-                        {agent.name}
-                      </h4>
-
-                      <p className="mt-0.5 text-[10px] text-white/40">
-                        {agent.strategy}
-                      </p>
-                    </div>
-                  </div>
-
+                <div className="flex items-center gap-3">
                   <span
-                    className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-[11px] font-extrabold text-black"
+                    style={{ background: agent.gradient }}
+                  >
+                    {agent.shortName}
+                  </span>
+                  <div>
+                    <p className="text-[15px] font-bold">{agent.name}</p>
+                    <p className="text-[12px] text-white/40">
+                      {agent.strategy}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-baseline justify-between">
+                  <span
+                    className={`text-2xl font-extrabold ${
                       agent.prediction === "UP"
-                        ? "bg-emerald-400/10 text-emerald-300"
-                        : "bg-rose-400/10 text-rose-300"
+                        ? "text-emerald-300"
+                        : "text-rose-300"
                     }`}
                   >
                     {agent.prediction}
                   </span>
+                  <span className="text-[13px] tabular-nums text-white/50">
+                    {agent.confidence}% confident
+                  </span>
                 </div>
 
-                <div className="mt-5 flex items-end justify-between">
-                  <div>
-                    <p className="text-[10px] text-white/40">
-                      Confidence
-                    </p>
-
-                    <p className="mt-1 text-lg font-semibold">
-                      {agent.confidence}%
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-[10px] text-white/40">
-                      Points
-                    </p>
-
-                    <p className="mt-1 font-mono text-sm font-semibold">
-                      {agent.points.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/[0.07] pt-3 text-[10px]">
-                  <div>
-                    <p className="text-white/40">Wins</p>
-                    <p className="mt-1 font-semibold text-emerald-300">
-                      {agent.wins}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-white/40">Losses</p>
-                    <p className="mt-1 font-semibold text-rose-300">
-                      {agent.losses}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-white/40">Win rate</p>
-                    <p className="mt-1 font-semibold text-white/80">
-                      {agent.wins + agent.losses > 0
-                        ? `${Math.round(
-                            (agent.wins / (agent.wins + agent.losses)) * 100,
-                          )}%`
-                        : "--"}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  className="mt-4 h-1 overflow-hidden rounded-full bg-white/[0.06]"
-                  aria-label={`${agent.name} confidence: ${agent.confidence}%`}
-                >
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${agent.confidence}%` }}
-                    transition={{
-                      delay: 0.25 + index * 0.08,
-                      duration: 0.5,
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-1.5 rounded-full"
+                    style={{
+                      width: `${agent.confidence}%`,
+                      background: agent.gradient,
                     }}
-                    className="h-full rounded-full bg-amber-400"
                   />
                 </div>
-              </motion.article>
+
+                <div className="mt-4 flex items-center justify-between text-[12px] text-white/40">
+                  <span className="tabular-nums">
+                    {agent.wins}W – {agent.losses}L
+                  </span>
+                  <span className="gradient-text font-bold tabular-nums">
+                    {agent.points.toLocaleString()} pts
+                  </span>
+                </div>
+              </motion.div>
             ))}
           </div>
         </section>
 
         {/* Leaderboard */}
-        <section
-          aria-labelledby="leaderboard-heading"
-          className="mt-8"
-        >
-          <div className="mb-4 flex items-end justify-between">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber-300/70">
-                Rankings
-              </p>
-
-              <h3
-                id="leaderboard-heading"
-                className="mt-1.5 text-xl font-semibold tracking-tight"
-              >
-                Arena leaderboard
-              </h3>
-            </div>
-
-            <Trophy
-              className="h-4 w-4 text-white/35"
-              aria-hidden="true"
-            />
+        <section className="glass-panel mt-5 rounded-3xl p-6 sm:p-8">
+          <div className="mb-5 flex items-end justify-between">
+            <h3 className="text-2xl font-extrabold tracking-tight">
+              Leaderboard
+            </h3>
+            <Trophy className="h-5 w-5 text-amber-300" aria-hidden="true" />
           </div>
 
-          <ol className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#111110]">
+          <div className="space-y-2">
             {leaderboardSorted.map((entry) => (
-              <li
-                key={entry.name}
-                className={`flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5 last:border-b-0 ${
-                  entry.type === "user"
-                    ? "bg-amber-400/[0.035]"
-                    : ""
+              <div
+                key={`${entry.type}-${entry.name}`}
+                className={`leaderboard-row flex items-center justify-between rounded-xl px-4 py-3.5 ${
+                  entry.type === "user" ? "leaderboard-row-user" : ""
                 }`}
               >
-                <div className="flex min-w-0 items-center gap-4">
-                  <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.07] bg-white/[0.02]"
-                    aria-label={`Rank ${entry.rank}`}
-                  >
+                <div className="flex items-center gap-4">
+                  <span className="flex h-7 w-7 items-center justify-center">
                     {entry.rank <= 3 ? (
                       <Medal
                         className={`h-4 w-4 ${
                           entry.rank === 1
                             ? "text-amber-300"
-                            : "text-white/35"
+                            : "text-white/40"
                         }`}
                         aria-hidden="true"
                       />
                     ) : (
-                      <span className="font-mono text-[10px] font-medium text-white/40">
-                        {String(entry.rank).padStart(2, "0")}
+                      <span className="text-[12px] tabular-nums text-white/40">
+                        {entry.rank}
                       </span>
                     )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {entry.name}
-                    </p>
-
-                    <p className="mt-0.5 text-[10px] text-white/40">
-                      {entry.type === "user"
-                        ? "Your current position"
-                        : "AI agent"}
+                  </span>
+                  <div>
+                    <p className="text-[15px] font-semibold">{entry.name}</p>
+                    <p className="text-[12px] text-white/40">
+                      {entry.type === "user" ? "You" : "AI agent"}
                     </p>
                   </div>
                 </div>
-
-                <span className="ml-4 shrink-0 font-mono text-sm font-semibold">
+                <span className="text-[15px] font-bold tabular-nums">
                   {entry.points.toLocaleString()}
                 </span>
-              </li>
+              </div>
             ))}
-          </ol>
+          </div>
         </section>
 
-        {/* Footer */}
-        <footer className="flex flex-col gap-2 py-8 text-[10px] text-white/40 sm:flex-row sm:items-center sm:justify-between">
-          <span>AI Agent Arena V1</span>
-          <span>Virtual points only · No real-money wagering</span>
+        <footer className="mt-6 flex flex-col gap-1 py-4 text-[12px] text-white/30 sm:flex-row sm:items-center sm:justify-between">
+          <span>Agent Arena V1</span>
+          <span>Virtual points only, no real-money wagering</span>
         </footer>
       </div>
     </main>
