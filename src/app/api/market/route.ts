@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const COINGECKO_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true";
 
-const UPSTREAM_TIMEOUT = 8_000;
+const UPSTREAM_TIMEOUT = 15_000;
 const CACHE_DURATION = 30_000;
 
 let cachedMarketData: {
@@ -68,9 +68,18 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Market API error:", error);
 
+    // Return previously cached data if live market data is temporarily unavailable.
+    // This prevents the dashboard from breaking during upstream API failures.
+    if (cachedMarketData) {
+      return NextResponse.json({
+        ...cachedMarketData,
+        stale: true,
+      });
+    }
+
     if (error instanceof DOMException && error.name === "AbortError") {
       return NextResponse.json(
-        { error: "CoinGecko request timed out after 8 seconds" },
+        { error: "CoinGecko request timed out after 15 seconds" },
         { status: 504 },
       );
     }

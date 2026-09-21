@@ -1,7 +1,7 @@
 import type { MarketData } from "@/types/market";
 
 const MARKET_API_URL = "/api/market";
-const REQUEST_TIMEOUT = 8_000;
+const REQUEST_TIMEOUT = 15_000;
 
 function isValidMarketData(data: unknown): data is MarketData {
   if (!data || typeof data !== "object") {
@@ -56,7 +56,7 @@ export async function fetchBitcoinPrice(
     return data;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Market data request timed out after 8 seconds");
+      throw new Error("Market data request timed out after 15 seconds");
     }
 
     if (error instanceof Error) {
