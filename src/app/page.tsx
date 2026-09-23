@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   ChevronDown,
   Circle,
@@ -21,6 +22,7 @@ import { useMarketData } from "@/hooks/useMarketData";
 import PriceHistoryChart, {
   type PriceHistoryPoint,
 } from "@/components/PriceHistoryChart";
+import ArenaBackground3D from "@/components/ArenaBackground3D";
 
 type Prediction = "UP" | "DOWN";
 type RoundDirection = "UP" | "DOWN" | "FLAT";
@@ -408,6 +410,9 @@ export default function Home() {
 
   return (
     <main className="arena-dashboard min-h-screen overflow-hidden text-white">
+      {/* === CINEMATIC BACKGROUND STACK === */}
+      <div className="arena-background-fallback" aria-hidden="true" />
+
       <video
         className="arena-background-video"
         autoPlay
@@ -419,52 +424,124 @@ export default function Home() {
         <source src="/media/arena-background.mp4" type="video/mp4" />
       </video>
 
-      <div className="arena-video-overlay" aria-hidden="true" />
+      <div className="arena-cinematic-vignette" aria-hidden="true" />
 
-      <div className="arena-dashboard-background" />
+      <ArenaBackground3D
+        change24h={market?.change24h ?? 0}
+        roundProgress={1 - timeLeft / ROUND_DURATION}
+        userPrediction={prediction}
+        roundClosed={roundClosed}
+      />
 
-      <div className="relative z-10 mx-auto max-w-[1550px] px-4 pb-5 pt-5 sm:px-7 lg:px-12">
+      <div className="arena-cinematic-glow" aria-hidden="true" />
+
+      {/* === FOREGROUND CONTENT === */}
+      <div className="relative z-10 mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-14">
         {/* HEADER */}
-        <header className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3 sm:gap-5">
-            <div className="arena-logo">
-              <span>AA</span>
-            </div>
-
-            <div>
-              <h1 className="arena-brand-title">AGENT ARENA</h1>
-              <div className="arena-brand-line" />
-            </div>
+        <motion.header
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="arena-header"
+        >
+          <div className="arena-logo">
+            <div className="arena-logo-mark">AA</div>
+            <span className="arena-brand-title">Agent Arena</span>
           </div>
 
-          <div className="flex items-center gap-4 sm:gap-7">
+          <nav className="arena-nav">
+            <a href="#arena">Arena</a>
+            <a href="#agents">Agents</a>
+            <a href="#leaderboard">Leaderboard</a>
+            <a href="#about">About</a>
+          </nav>
+
+          <div className="flex items-center gap-3 sm:gap-4">
             <div className="arena-live-pill">
-              <Circle className="h-3 w-3 fill-cyan-300 text-cyan-300" />
-              <span>LIVE</span>
-              <span className="hidden text-white/30 sm:inline">|</span>
-              <Users className="hidden h-4 w-4 text-white/60 sm:block" />
+              <span className="arena-live-dot" />
+              <span>Live</span>
+              <span className="hidden text-white/20 sm:inline">·</span>
               <span className="hidden sm:inline">386,812</span>
             </div>
 
-            <div className="hidden h-10 w-px bg-white/20 sm:block" />
+            <div className="arena-profile">
+              <span>1</span>
+            </div>
 
-            <div className="flex items-center gap-2">
-              <div className="arena-profile">
-                <span>1</span>
+            <ChevronDown className="hidden h-4 w-4 text-white/40 sm:block" />
+          </div>
+        </motion.header>
+
+        {/* HERO */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="arena-hero"
+        >
+          <span className="arena-hero-label">
+            Live Bitcoin Prediction Arena
+          </span>
+
+          <h1 className="arena-hero-title">
+            Predict the market.
+            <br />
+            <em>Outsmart the agents.</em>
+          </h1>
+
+          <p className="arena-hero-sub">
+            A real-time arena where AI agents and humans compete on
+            Bitcoin price direction. Every 45 seconds a new round begins.
+            Pick your side, watch the price, and rise up the leaderboard.
+          </p>
+
+          <div className="arena-hero-actions">
+            <a href="#arena" className="arena-pill arena-pill-primary">
+              Enter the arena
+              <ArrowRight className="h-4 w-4" />
+            </a>
+            <a href="#agents" className="arena-pill arena-pill-ghost">
+              Meet the agents
+            </a>
+          </div>
+
+          <div className="arena-hero-stats">
+            <div>
+              <div className="arena-hero-stat-value tabular-nums">
+                {roundNumber}
               </div>
-
-              <ChevronDown className="h-4 w-4 text-white/60" />
+              <div className="arena-hero-stat-label">Round number</div>
+            </div>
+            <div>
+              <div className="arena-hero-stat-value tabular-nums">
+                {userPoints.toLocaleString()}
+              </div>
+              <div className="arena-hero-stat-label">Your points</div>
+            </div>
+            <div>
+              <div className="arena-hero-stat-value tabular-nums">
+                386,812
+              </div>
+              <div className="arena-hero-stat-label">Players online</div>
             </div>
           </div>
-        </header>
+        </motion.section>
 
         {/* MAIN DASHBOARD */}
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_258px]">
+        <section
+          id="arena"
+          className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]"
+        >
           {/* LEFT CONTENT */}
           <div className="min-w-0">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_365px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
               {/* CHART */}
-              <section className="arena-panel arena-chart-panel">
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="arena-panel arena-chart-panel"
+              >
                 <div className="arena-time-tabs">
                   <button>1H</button>
                   <button>5W</button>
@@ -473,11 +550,11 @@ export default function Home() {
                   <button>AIX</button>
                 </div>
 
-                <div className="mb-5 flex items-center justify-between">
+                <div className="mb-6 flex items-start justify-between">
                   <div>
                     <p className="arena-label">BTC / USDT</p>
 
-                    <div className="mt-2 flex items-end gap-3">
+                    <div className="mt-4 flex items-end gap-4">
                       <h2 className="arena-price">
                         {loading
                           ? "Loading..."
@@ -500,13 +577,15 @@ export default function Home() {
                   </div>
 
                   <div className="hidden text-right sm:block">
-                    <p className="arena-label">MARKET</p>
-                    <p className="mt-1 text-sm text-cyan-200">BITCOIN</p>
+                    <p className="arena-label">Market</p>
+                    <p className="mt-2 text-sm font-normal text-white/70">
+                      Bitcoin
+                    </p>
                   </div>
                 </div>
 
                 {error && (
-                  <p className="mb-3 text-xs text-rose-300">{error}</p>
+                  <p className="mb-4 text-xs text-rose-300/80">{error}</p>
                 )}
 
                 <div className="arena-chart-wrapper">
@@ -517,24 +596,31 @@ export default function Home() {
                   />
                 </div>
 
-                <div className="mt-4 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-white/40">
+                <div className="mt-4 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-white/25">
                   <span>Live price history</span>
-                  <span>60s refresh</span>
+                  <span>Refreshes every 60s</span>
                 </div>
-              </section>
+              </motion.section>
 
               {/* COUNTDOWN AND PREDICTION */}
-              <section className="arena-prediction-column">
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="arena-prediction-column"
+              >
                 <div className="arena-countdown">
                   <div className="arena-countdown-ring">
                     <div className="arena-countdown-inner">
                       <span className="arena-countdown-label">
-                        COUNTDOWN
+                        Countdown
                       </span>
 
                       <strong>{formatTime(timeLeft)}</strong>
 
-                      <span className="arena-countdown-label">TIME</span>
+                      <span className="arena-countdown-label">
+                        Time left
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -548,8 +634,8 @@ export default function Home() {
                     }`}
                     aria-label="Predict price will go up"
                   >
-                    <span>PREDICT UP</span>
-                    <ArrowUp className="h-10 w-10" />
+                    <span>Predict Up</span>
+                    <ArrowUp className="h-7 w-7" />
                   </button>
 
                   <button
@@ -560,8 +646,8 @@ export default function Home() {
                     }`}
                     aria-label="Predict price will go down"
                   >
-                    <span>PREDICT DOWN</span>
-                    <ArrowDown className="h-10 w-10" />
+                    <span>Predict Down</span>
+                    <ArrowDown className="h-7 w-7" />
                   </button>
                 </div>
 
@@ -571,17 +657,11 @@ export default function Home() {
                   </div>
                 )}
 
-                {/*
-                 * FIX: while the round is closed but not yet resolved,
-                 * show a resolving/error state instead of nothing. On
-                 * failure, a retry button re-runs resolution without
-                 * needing a full page refresh.
-                 */}
                 {roundClosed && !roundResult && (
                   <div className="arena-status-text">
                     {resolutionError ? (
                       <div className="flex flex-col items-center gap-3">
-                        <span className="text-rose-300">
+                        <span className="text-rose-300/90">
                           {resolutionError}
                         </span>
                         <button
@@ -592,44 +672,49 @@ export default function Home() {
                           }}
                           className="arena-next-button flex items-center gap-2"
                         >
-                          <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                          RETRY
+                          <RefreshCcw
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
+                          Retry
                         </button>
                       </div>
                     ) : (
                       <span>
                         {isResolving
-                          ? "RESOLVING ROUND..."
-                          : "PREPARING RESULT..."}
+                          ? "Resolving round..."
+                          : "Preparing result..."}
                       </span>
                     )}
                   </div>
                 )}
 
-                {/*
-                 * FIX: added `roundResult` to this condition so the
-                 * fallback "start next round" button can only appear
-                 * once a result actually exists — not during the
-                 * resolving window, where it would conflict with the
-                 * status message above.
-                 */}
                 {!showRoundResult && roundClosed && roundResult && (
                   <button onClick={resetRound} className="arena-next-button">
-                    START NEXT ROUND
+                    Start next round
                   </button>
                 )}
-              </section>
+              </motion.section>
             </div>
 
             {/* AGENT CARDS */}
-            <section className="mt-6">
+            <section id="agents" className="arena-section">
+              <div className="arena-section-head">
+                <h2 className="arena-section-title">
+                  Meet the <em>agents</em>
+                </h2>
+                <span className="arena-section-meta">
+                  {agents.length} competing this round
+                </span>
+              </div>
+
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 {agents.map((agent, index) => (
                   <motion.article
                     key={agent.id}
                     initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.08 }}
                     className={`arena-agent-card agent-${agent.id}`}
                   >
                     <div className="arena-agent-icon">
@@ -641,21 +726,21 @@ export default function Home() {
                     <h3>{agent.name}</h3>
 
                     <div className="arena-agent-tags">
-                      <span>AI AGENT</span>
+                      <span>AI Agent</span>
                       <span>{agent.strategy}</span>
                     </div>
 
                     <div className="mt-5 flex items-center justify-between">
                       <div>
-                        <p className="arena-small-label">PREDICTION</p>
+                        <p className="arena-small-label">Prediction</p>
                         <p className="arena-agent-prediction">
                           {agent.prediction}
                         </p>
                       </div>
 
                       <div className="text-right">
-                        <p className="arena-small-label">CONFIDENCE</p>
-                        <p className="text-sm font-bold">
+                        <p className="arena-small-label">Confidence</p>
+                        <p className="text-sm font-medium tabular-nums">
                           {agent.confidence}%
                         </p>
                       </div>
@@ -668,8 +753,8 @@ export default function Home() {
                       />
                     </div>
 
-                    <div className="mt-4 flex justify-between text-[10px] text-white/40">
-                      <span>{agent.points.toLocaleString()} PTS</span>
+                    <div className="mt-4 flex justify-between text-[10px] tracking-[0.14em] text-white/35">
+                      <span>{agent.points.toLocaleString()} pts</span>
                       <span>
                         {agent.wins}W / {agent.losses}L
                       </span>
@@ -677,35 +762,34 @@ export default function Home() {
                   </motion.article>
                 ))}
 
-                {/* USER CARD */}
                 <motion.article
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.24 }}
                   className="arena-agent-card agent-user"
                 >
                   <div className="arena-user-icon">
                     <Users />
                   </div>
 
-                  <h3>YOU</h3>
+                  <h3>You</h3>
 
                   <div className="arena-agent-tags">
-                    <span>STRATEGY</span>
-                    <span>MANUAL</span>
+                    <span>Strategy</span>
+                    <span>Manual</span>
                   </div>
 
                   <div className="mt-5 flex items-center justify-between">
                     <div>
-                      <p className="arena-small-label">PREDICTION</p>
+                      <p className="arena-small-label">Prediction</p>
                       <p className="arena-agent-prediction">
                         {prediction ?? "--"}
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <p className="arena-small-label">POINTS</p>
-                      <p className="text-sm font-bold">
+                      <p className="arena-small-label">Points</p>
+                      <p className="text-sm font-medium tabular-nums">
                         {userPoints.toLocaleString()}
                       </p>
                     </div>
@@ -723,19 +807,25 @@ export default function Home() {
 
             {/* BOTTOM STATUS BAR */}
             <footer className="arena-bottom-bar mt-6">
-              <span>ROUND #: {roundNumber}</span>
-              <span>TOTAL PLAYERS: 386,812</span>
+              <span>Round {roundNumber}</span>
+              <span>386,812 players</span>
               <span className="hidden sm:inline">
-                WIN RATE: <b>92%</b>
+                Win rate <b>92%</b>
               </span>
-              <span className="ml-auto">VIRTUAL POINTS ONLY</span>
+              <span className="ml-auto">Virtual points only</span>
             </footer>
           </div>
 
           {/* LEADERBOARD */}
-          <aside className="arena-leaderboard">
+          <motion.aside
+            id="leaderboard"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.25 }}
+            className="arena-leaderboard"
+          >
             <div className="arena-leaderboard-heading">
-              AGENT ARENA LEADERBOARD
+              Live Leaderboard
             </div>
 
             <div className="space-y-1">
@@ -746,22 +836,24 @@ export default function Home() {
                     entry.type === "user" ? "current-user" : ""
                   }`}
                 >
-                  <span className="arena-rank">{entry.rank}</span>
+                  <span className="arena-rank">
+                    {String(entry.rank).padStart(2, "0")}
+                  </span>
 
                   <div className={`arena-rank-icon rank-${entry.rank}`}>
                     {entry.type === "user" ? (
-                      <Users className="h-5 w-5" />
+                      <Users className="h-4 w-4" />
                     ) : entry.name === "Degen" ? (
-                      <Flame className="h-5 w-5" />
+                      <Flame className="h-4 w-4" />
                     ) : entry.name === "Whale Watcher" ? (
-                      <Waves className="h-5 w-5" />
+                      <Waves className="h-4 w-4" />
                     ) : (
-                      <ArrowDown className="h-5 w-5" />
+                      <ArrowDown className="h-4 w-4" />
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold uppercase">
+                    <p className="truncate text-xs font-medium uppercase tracking-wider text-white/80">
                       {entry.name}
                     </p>
                   </div>
@@ -773,20 +865,39 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-8 border-t border-white/10 pt-5 text-center">
-              <Trophy className="mx-auto h-7 w-7 text-amber-300" />
+            <div className="mt-8 border-t border-white/5 pt-6 text-center">
+              <Trophy className="mx-auto h-5 w-5 text-amber-300/70" />
 
-              <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
+              <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-white/30">
                 Compete. Predict. Win.
               </p>
             </div>
-          </aside>
+          </motion.aside>
+        </section>
+
+        {/* ABOUT / FOOTER */}
+        <section id="about" className="arena-section pb-20">
+          <div className="arena-section-head">
+            <h2 className="arena-section-title">
+              About the <em>arena</em>
+            </h2>
+            <span className="arena-section-meta">Virtual points only</span>
+          </div>
+
+          <p className="max-w-2xl text-sm leading-relaxed text-white/50">
+            Agent Arena is a demonstration of AI agents competing with
+            humans on short-horizon Bitcoin price prediction. Every 45
+            seconds a new round begins — agents lock in their picks, you
+            lock in yours, and the price decides the winner. No real
+            money is involved.
+          </p>
         </section>
       </div>
 
+      {/* RESULT MODAL */}
       {roundClosed && roundResult && showRoundResult && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#05060d]/75 px-4 backdrop-blur-md"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#05070a]/85 px-4 backdrop-blur-xl"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           role="dialog"
@@ -794,65 +905,92 @@ export default function Home() {
           aria-label="Round result"
         >
           <motion.div
-            className={`relative w-full max-w-[720px] overflow-hidden rounded-[28px] border p-8 text-center shadow-2xl sm:p-12 ${resultIsWin ? "border-emerald-300/80 bg-emerald-950/70 shadow-emerald-500/30" : resultIsLoss ? "border-rose-400/80 bg-rose-950/70 shadow-rose-500/30" : "border-amber-300/70 bg-amber-950/70 shadow-amber-500/30"}`}
-            initial={{ scale: 0.82, y: 24 }}
+            className={`relative w-full max-w-[640px] overflow-hidden rounded-[24px] border p-10 text-center backdrop-blur-2xl sm:p-14 ${
+              resultIsWin
+                ? "border-emerald-300/40 bg-emerald-950/40"
+                : resultIsLoss
+                  ? "border-rose-400/40 bg-rose-950/40"
+                  : "border-amber-300/40 bg-amber-950/40"
+            }`}
+            initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 180, damping: 18 }}
+            transition={{ type: "spring", stiffness: 180, damping: 20 }}
           >
             <div className="relative z-10">
               <motion.div
-                className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full border ${resultIsWin ? "border-emerald-200 bg-emerald-300/20 text-emerald-200" : resultIsLoss ? "border-rose-200 bg-rose-300/20 text-rose-200" : "border-amber-200 bg-amber-300/20 text-amber-200"}`}
+                className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full border ${
+                  resultIsWin
+                    ? "border-emerald-200/60 bg-emerald-300/10 text-emerald-200"
+                    : resultIsLoss
+                      ? "border-rose-200/60 bg-rose-300/10 text-rose-200"
+                      : "border-amber-200/60 bg-amber-300/10 text-amber-200"
+                }`}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.15, type: "spring" }}
               >
                 {resultIsWin ? (
-                  <CheckCircle2 className="h-12 w-12" />
+                  <CheckCircle2 className="h-9 w-9" />
                 ) : resultIsLoss ? (
-                  <X className="h-12 w-12" />
+                  <X className="h-9 w-9" />
                 ) : (
-                  <Circle className="h-12 w-12" />
+                  <Circle className="h-9 w-9" />
                 )}
               </motion.div>
 
-              <p className="mt-7 text-xs font-semibold uppercase tracking-[0.35em] text-white/55">
+              <p className="mt-7 font-mono text-[10px] uppercase tracking-[0.32em] text-white/40">
                 Round {roundNumber} complete
               </p>
-              <h2 className="mt-3 text-4xl font-black uppercase tracking-tight text-white sm:text-6xl">
-                {resultIsWin
-                  ? "You Won"
-                  : resultIsLoss
-                    ? "Round Lost"
-                    : "Round Draw"}
-              </h2>
-              <p className="mt-2 text-2xl font-black uppercase text-white sm:text-4xl">
-                {resultIsWin
-                  ? "This Round"
-                  : resultIsLoss
-                    ? "Try Again"
-                    : "No Change"}
-              </p>
 
-              <div className="mx-auto mt-8 max-w-[510px] rounded-2xl border border-white/10 bg-black/20 px-5 py-5">
-                <p className="text-lg text-white/80 sm:text-2xl">
+              <h2 className="mt-4 text-3xl font-normal tracking-tight text-white sm:text-5xl">
+                {resultIsWin ? (
+                  <>
+                    You <em className="italic text-emerald-300">won</em>
+                  </>
+                ) : resultIsLoss ? (
+                  <>
+                    Round <em className="italic text-rose-300">lost</em>
+                  </>
+                ) : (
+                  <>
+                    Round <em className="italic text-amber-200">draw</em>
+                  </>
+                )}
+              </h2>
+
+              <div className="mx-auto mt-8 max-w-[440px] rounded-2xl border border-white/8 bg-black/25 px-6 py-6">
+                <p className="text-sm text-white/60">
                   BTC went{" "}
                   <span
-                    className={`font-black ${actualDirection === "UP" ? "text-emerald-300" : actualDirection === "DOWN" ? "text-rose-300" : "text-amber-200"}`}
+                    className={`font-medium ${
+                      actualDirection === "UP"
+                        ? "text-emerald-300"
+                        : actualDirection === "DOWN"
+                          ? "text-rose-300"
+                          : "text-amber-200"
+                    }`}
                   >
                     {actualDirection ?? "FLAT"}
                   </span>{" "}
-                  <span className="font-black">
+                  <span className="font-medium tabular-nums">
                     {roundChangePercent >= 0 ? "+" : ""}
                     {roundChangePercent.toFixed(2)}%
                   </span>
                 </p>
+
                 <p
-                  className={`mt-2 text-xl font-black sm:text-3xl ${resultIsWin ? "text-emerald-300" : resultIsLoss ? "text-rose-300" : "text-amber-200"}`}
+                  className={`mt-3 font-mono text-xs uppercase tracking-[0.18em] ${
+                    resultIsWin
+                      ? "text-emerald-300"
+                      : resultIsLoss
+                        ? "text-rose-300"
+                        : "text-amber-200"
+                  }`}
                 >
                   {resultIsWin
                     ? `+${WIN_POINTS} points`
                     : resultIsLoss
-                      ? "0 points, streak reset"
+                      ? "0 points"
                       : "0 points"}
                 </p>
               </div>
@@ -860,9 +998,10 @@ export default function Home() {
               <button
                 type="button"
                 onClick={resetRound}
-                className={`mt-8 rounded-2xl border px-10 py-4 text-base font-black uppercase tracking-wide text-white transition hover:scale-[1.03] ${resultIsWin ? "border-emerald-200/80 bg-emerald-400/30 shadow-lg shadow-emerald-500/30" : resultIsLoss ? "border-rose-200/80 bg-rose-400/25 shadow-lg shadow-rose-500/30" : "border-amber-200/80 bg-amber-400/25 shadow-lg shadow-amber-500/30"}`}
+                className="arena-pill arena-pill-primary mt-8"
               >
-                {resultIsLoss ? "Try Next Round" : "Next Round"}
+                {resultIsLoss ? "Try next round" : "Next round"}
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </motion.div>
@@ -870,19 +1009,14 @@ export default function Home() {
       )}
 
       {roundClosed && roundResult && !showRoundResult && (
-        <div className="fixed left-0 right-0 top-[145px] z-[100] flex justify-center px-4 pointer-events-none">
+        <div className="pointer-events-none fixed left-0 right-0 top-24 z-[100] flex justify-center px-4">
           <button
             type="button"
             onClick={resetRound}
-            className={`pointer-events-auto rounded-2xl border px-10 py-4 text-base font-black uppercase tracking-wide text-white transition hover:scale-[1.03] ${
-              resultIsWin
-                ? "border-emerald-200/80 bg-emerald-400/30 shadow-lg shadow-emerald-500/30"
-                : resultIsLoss
-                  ? "border-rose-200/80 bg-rose-400/25 shadow-lg shadow-rose-500/30"
-                  : "border-amber-200/80 bg-amber-400/25 shadow-lg shadow-amber-500/30"
-            }`}
+            className="arena-pill arena-pill-primary pointer-events-auto"
           >
-            START NEXT ROUND
+            Start next round
+            <ArrowRight className="h-4 w-4" />
           </button>
         </div>
       )}
